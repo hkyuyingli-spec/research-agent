@@ -49,7 +49,7 @@ if "authenticated" not in st.session_state:
     st.session_state["authenticated"] = False
 
 if not st.session_state["authenticated"]:
-    st.title("🔒 Indonesian Tax & Regulation Research Agent")
+    st.title("🔒 Research Agent")
     st.subheader("Login Required")
 
     if not APP_PASSWORD:
@@ -216,8 +216,8 @@ Instructions:
 
 
 # ---------- Streamlit UI ----------
-st.title("🔎 Indonesian Tax & Regulation Research Agent")
-st.caption("AI-powered legal research with Tavily and Gemini 3.5 Flash")
+st.title("🔎 Research Agent")
+st.caption("AI-powered web research with Tavily and Gemini")
 
 with st.sidebar:
     st.header("Search Settings")
