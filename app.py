@@ -49,31 +49,6 @@ def get_secret(key_name):
 
 TAVILY_API_KEY = get_secret("TAVILY_API_KEY")
 GEMINI_API_KEY = get_secret("GEMINI_API_KEY")
-APP_PASSWORD = get_secret("APP_PASSWORD")
-
-
-# ---------- Password Protection Gate ----------
-if APP_PASSWORD:
-    if "authenticated" not in st.session_state:
-        st.session_state["authenticated"] = False
-
-    if not st.session_state["authenticated"]:
-        st.title("🔒 Research Agent")
-        st.subheader("Login Required")
-
-        with st.form("login_form"):
-            pwd_input = st.text_input("Enter password:", type="password")
-            submitted = st.form_submit_button("Enter App", type="primary")
-
-        if submitted:
-            if pwd_input == APP_PASSWORD:
-                st.session_state["authenticated"] = True
-                st.rerun()
-            else:
-                st.error("Incorrect password. Please try again.")
-
-        # Stop rendering anything else until authenticated
-        st.stop()
 
 
 # ---------- Verify API Keys ----------
@@ -294,12 +269,6 @@ with st.sidebar:
     st.caption("Adds YouTube, TikTok, Facebook, Reddit and X. Results are unverified.")
     top_n = st.slider("Number of top sources to read in full", min_value=2, max_value=8, value=4)
     language = st.selectbox("Answer Language", ["English", "Chinese (Simplified)"])
-
-    if APP_PASSWORD:
-        st.markdown("---")
-        if st.button("Log Out"):
-            st.session_state["authenticated"] = False
-            st.rerun()
 
 question = st.text_input("Enter your research question:", placeholder="e.g. What is the VAT rate on digital goods in Indonesia?")
 run_btn = st.button("Start Research", type="primary", disabled=not question.strip())
