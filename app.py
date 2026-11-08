@@ -80,9 +80,17 @@ def is_social(url):
     return any(host == d or host.endswith("." + d) for d in SOCIAL_DOMAINS)
 
 
-def plan_queries(question):
+def plan_queries(question, goal=""):
+    if goal:
+        goal_clause = f"""
+User's specific goal for this research:
+{goal}
+Formulate 3 distinct queries tailored to directly help achieve this goal (for example: official company portals, investor relations, official contact pages, or regulatory filings as appropriate)."""
+    else:
+        goal_clause = "\n(for example: the law itself, recent changes, official guidance)."
+
     prompt = f"""Turn this research question into 3 different web search queries
-that together cover the topic (for example: the law itself, recent changes, official guidance).
+that together cover the topic{goal_clause}
 Question: {question}
 Return JSON only: a list of 3 strings."""
     try:
@@ -136,16 +144,24 @@ def search_all(queries, official_only=False, include_social=False):
     return list(found.values())
 
 
-def review_sources(question, sources):
+def review_sources(question, sources, goal=""):
     listing = "\n".join(
         f"{i}. [{('Social' if s.get('social') else 'Web')}] {s['title']} | {s['url']}\n   {s['content'][:300]}"
         for i, s in enumerate(sources)
     )
-    prompt = f"""You are reviewing search results for this research question: {question}
-Rate each result from 1 to 5 for how useful and trustworthy it is (5 = best).
+    if goal:
+        goal_review_instructions = f"""User's specific goal:
+{goal}
+Score each result from 1 to 5 not only for general trust, but specifically for relevance and usefulness toward achieving this GOAL.
+Give a short one-line reason on why this source helps or doesn't help toward the goal."""
+    else:
+        goal_review_instructions = """Rate each result from 1 to 5 for how useful and trustworthy it is (5 = best).
 Prefer official regulations and recent authoritative material.
+Give a short reason."""
+
+    prompt = f"""You are reviewing search results for this research question: {question}
+{goal_review_instructions}
 Be critical of social media posts (YouTube, TikTok, Reddit, X, Facebook): do not inflate their score, as they represent unverified public sentiment or personal commentary rather than verified facts.
-Give a short reason.
 Return JSON only: a list like [{{"id": 0, "score": 4, "note": "short reason"}}], one entry per result.
 
 Results:
@@ -201,7 +217,7 @@ def fetch_full_text(sources):
     return sources
 
 
-def summarize(question, sources, language="English", include_social=False):
+def summarize(question, sources, language="English", include_social=False, goal=""):
     sources_text = ""
     for idx, s in enumerate(sources, start=1):
         source_type = "Social/unverified" if s.get("social") else ("Official Government" if s.get("official") else "Standard Web")
@@ -229,8 +245,16 @@ def summarize(question, sources, language="English", include_social=False):
    (Numbered list of sources used with title and URL)
 """
 
+    goal_clause = ""
+    if goal:
+        goal_clause = f"""
+USER'S STATED GOAL:
+{goal}
+Act as an analyst. Synthesize the findings and evaluate the sources specifically with this goal in mind.
+"""
+
     prompt = f"""You are a specialized legal and web research assistant.
-Answer this research question strictly using ONLY the provided sources below.
+Answer this research question strictly using ONLY the provided sources below.{goal_clause}
 
 Question: {question}
 
@@ -270,6 +294,11 @@ with st.sidebar:
     top_n = st.slider("Number of top sources to read in full", min_value=2, max_value=8, value=4)
     language = st.selectbox("Answer Language", ["English", "Chinese (Simplified)"])
 
+goal = st.text_input(
+    "Your goal (what will you do with this research?)",
+    placeholder="Optional: e.g. I sell industrial software and want to reach mid-to-large Chinese manufacturers",
+).strip()
+
 question = st.text_input("Enter your research question:", placeholder="e.g. What is the VAT rate on digital goods in Indonesia?")
 run_btn = st.button("Start Research", type="primary", disabled=not question.strip())
 
@@ -277,7 +306,7 @@ if run_btn and question.strip():
     # 1. PLAN
     st.subheader("1. Plan: Generating Search Queries")
     with st.spinner("Generating 3 search queries with Gemini..."):
-        queries = plan_queries(question)
+        queries = plan_queries(question, goal=goal)
     st.write("Generated search queries:")
     for q in queries:
         st.markdown(f"- `{q}`")
